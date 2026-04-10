@@ -1,13 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Image, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
 import { useStore } from '../../store/useStore';
+
+const { width } = Dimensions.get('window');
 
 const SLIDES = [
   {
     title: 'Meet Your Future',
     description: 'Talk directly to an older, highly successful version of yourself.',
-    image: { uri: 'https://images.unsplash.com/photo-1522204523234-8729aa6e3d5f?q=80&w=1000' }
+    image: require('../../../assets/logo.png'),
+    isLocal: true
   },
   {
     title: 'Architect Your Path',
@@ -16,40 +20,30 @@ const SLIDES = [
   },
   {
     title: 'Stay Accountable',
-    description: 'Your future self will brutally honestly analyze your progress and tell you what went wrong.',
+    description: 'Your future self will provide brutally honest analysis of your progress.',
     image: { uri: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1000' }
   },
   {
-    title: 'Gamify Your Life',
-    description: 'Level up your discipline, earn XP, and become the person you were meant to be.',
-    image: { uri: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1000' } 
+    title: 'Level Up Your Life',
+    description: 'Build discipline, earn XP, and become the person you were meant to be.',
+    image: { uri: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1000' }
   }
 ];
 
-export default function IntroScreen({ navigation }: any) {
+export default function IntroScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const { setHasSeenIntro } = useStore();
   
-  // Animation Values
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const exitAnim = useRef(new Animated.Value(0)).current;
 
-  // Trigger animation when index changes
   useEffect(() => {
     fadeAnim.setValue(0);
-    scaleAnim.setValue(0.95);
+    slideAnim.setValue(15);
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      })
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, friction: 8, useNativeDriver: true })
     ]).start();
   }, [currentIndex]);
 
@@ -57,136 +51,89 @@ export default function IntroScreen({ navigation }: any) {
     if (currentIndex < SLIDES.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      setHasSeenIntro(true);
+      Animated.timing(exitAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => {
+        setHasSeenIntro(true);
+      });
     }
   };
 
-  const handleSkip = () => {
-    setHasSeenIntro(true);
-  };
+  const backgroundColor = exitAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [theme.colors.background, theme.colors.surface]
+  });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
-      </View>
+    <Animated.View style={[styles.container, { backgroundColor }]}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <Animated.View style={[styles.main, { opacity: exitAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}>
+          <View style={styles.topSection}>
+            <TouchableOpacity onPress={() => setHasSeenIntro(true)}>
+              <Text style={styles.skipText}>Skip</Text>
+            </TouchableOpacity>
+          </View>
 
-      <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.imageContainer}>
-          <Animated.Image 
-            source={SLIDES[currentIndex].image} 
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
-        </View>
+          <View style={styles.content}>
+            <Animated.View style={[styles.slide, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+              <View style={[styles.imageWrap, currentIndex === 0 && styles.logoBackground]}>
+                <Image 
+                  source={SLIDES[currentIndex].image} 
+                  style={[styles.image, currentIndex === 0 && styles.logoImage]} 
+                  resizeMode={currentIndex === 0 ? "contain" : "cover"}
+                />
+              </View>
+              <Text style={styles.title}>{SLIDES[currentIndex].title}</Text>
+              <Text style={styles.description}>{SLIDES[currentIndex].description}</Text>
+            </Animated.View>
 
-        <Text style={styles.title}>{SLIDES[currentIndex].title}</Text>
-        <Text style={styles.description}>{SLIDES[currentIndex].description}</Text>
+            <View style={styles.dots}>
+              {SLIDES.map((_, i) => (
+                <View key={i} style={[styles.dot, currentIndex === i && styles.dotActive]} />
+              ))}
+            </View>
+          </View>
 
-        <View style={styles.dotsContainer}>
-          {SLIDES.map((_, index) => (
-            <View 
-              key={index} 
-              style={[
-                styles.dot, 
-                currentIndex === index && styles.activeDot
-              ]} 
-            />
-          ))}
-        </View>
-      </Animated.View>
-
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.button} onPress={handleNext}>
-          <Text style={styles.buttonText}>
-            {currentIndex === SLIDES.length - 1 ? "Let's Begin" : "Next"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.button} onPress={handleNext} activeOpacity={0.9}>
+              <Text style={styles.buttonText}>
+                {currentIndex === SLIDES.length - 1 ? "Start Transformation" : "Continue"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </SafeAreaView>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
+  container: { flex: 1 },
+  main: { flex: 1 },
+  topSection: { padding: 20, alignItems: 'flex-end' },
+  skipText: { fontSize: 16, fontWeight: '600', color: theme.colors.textSecondary },
+  content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  slide: { alignItems: 'center', width: '100%' },
+  imageWrap: {
+    width: width * 0.8, height: width * 0.9, borderRadius: 28, overflow: 'hidden', marginBottom: 32,
+    backgroundColor: theme.colors.surface, ...theme.shadow.card,
+    borderWidth: 1, borderColor: theme.colors.borderLight
   },
-  topBar: {
-    alignItems: 'flex-end',
-    padding: theme.spacing.m,
-  },
-  skipText: {
-    color: theme.colors.text,
-    fontSize: 16,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.xl,
-  },
-  imageContainer: {
-    width: 280,
-    height: 380,
-    borderRadius: theme.borderRadius.large,
-    overflow: 'hidden',
-    marginBottom: theme.spacing.xl,
-    elevation: 10,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-  },
-  title: {
-    ...theme.typography.h2,
-    marginBottom: theme.spacing.m,
-    textAlign: 'center',
-  },
-  description: {
-    ...theme.typography.body,
-    textAlign: 'center',
-    marginBottom: theme.spacing.xxl,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.surface,
-    marginHorizontal: 5,
-  },
-  activeDot: {
-    backgroundColor: theme.colors.primary,
-    width: 25,
-  },
-  footer: {
-    padding: theme.spacing.xl,
-  },
+  // Adjusted logo layout for a more balanced "stunning" feel
+  logoBackground: { backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', padding: 60 },
+  image: { width: '100%', height: '100%' },
+  logoImage: { width: '100%', height: '100%' }, // Uses container padding (60) now for sizing
+  title: { fontSize: 28, fontWeight: '800', color: theme.colors.text, textAlign: 'center', marginBottom: 16, letterSpacing: -0.5 },
+  description: { fontSize: 16, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 24 },
+  dots: { flexDirection: 'row', marginTop: 40, gap: 10 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.border },
+  dotActive: { width: 28, backgroundColor: theme.colors.primary },
+  footer: { padding: 24, paddingBottom: 40 },
   button: {
-    backgroundColor: theme.colors.primary,
-    height: 55,
-    borderRadius: theme.borderRadius.medium,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    backgroundColor: theme.colors.accent, height: 62, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center', ...theme.shadow.card,
   },
-  buttonText: {
-    color: theme.colors.background,
-    fontSize: 18,
-    fontWeight: 'bold',
-  }
+  buttonText: { color: '#fff', fontSize: 18, fontWeight: '800' },
 });

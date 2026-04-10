@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../../store/useStore';
 import { theme } from '../../theme/theme';
@@ -36,9 +37,7 @@ export default function ImageUploadScreen() {
 
   const processImage = async () => {
     setIsProcessing(true);
-    // TODO: Upload to Firebase Storage
-    // TODO: Call Replicate API for aging
-    // Simulate delay
+    // Simulate API logic
     setTimeout(() => {
       setIsProcessing(false);
       setOnboardingComplete(true);
@@ -49,45 +48,50 @@ export default function ImageUploadScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Visualize Your Future</Text>
-        <Text style={styles.subtitle}>Upload a selfie. Our AI will generate your successful, older self to talk to.</Text>
+        <Text style={styles.subtitle}>Upload a selfie. Our AI will generate your successful, older self to guide you.</Text>
 
-        <View style={styles.imageContainer}>
+        <View style={styles.imageWrap}>
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.image} />
           ) : (
             <View style={styles.placeholder}>
-              <ImageIcon color={theme.colors.text} size={48} />
+              <ImageIcon color={theme.colors.border} size={64} />
+              <Text style={styles.placeholderText}>No photo selected</Text>
             </View>
           )}
         </View>
 
         {!isProcessing ? (
-          <View style={styles.row}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => pickImage(true)}>
-              <Camera color={theme.colors.textLight} size={24} />
-              <Text style={styles.iconText}>Camera</Text>
+          <View style={styles.btnRow}>
+            <TouchableOpacity style={styles.optionBtn} onPress={() => pickImage(true)}>
+              <View style={[styles.iconWrap, { backgroundColor: theme.colors.primaryLight }]}>
+                <Camera color="#fff" size={24} />
+              </View>
+              <Text style={styles.optionText}>Camera</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.iconButton} onPress={() => pickImage(false)}>
-              <ImageIcon color={theme.colors.textLight} size={24} />
-              <Text style={styles.iconText}>Gallery</Text>
+            <TouchableOpacity style={styles.optionBtn} onPress={() => pickImage(false)}>
+              <View style={[styles.iconWrap, { backgroundColor: theme.colors.accent }]}>
+                <ImageIcon color="#fff" size={24} />
+              </View>
+              <Text style={styles.optionText}>Library</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.processing}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.processingText}>Consulting the future...</Text>
+            <Text style={styles.processingText}>Consulting your future self...</Text>
           </View>
         )}
       </View>
 
       <View style={styles.footer}>
         <TouchableOpacity 
-          style={[styles.button, (!imageUri || isProcessing) && styles.buttonDisabled]} 
+          style={[styles.mainBtn, (!imageUri || isProcessing) && styles.mainBtnOff]} 
           onPress={processImage}
           disabled={!imageUri || isProcessing}
         >
-          <Text style={styles.buttonText}>Generate Future You</Text>
+          <Text style={styles.mainBtnText}>Generate My Future</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -95,88 +99,30 @@ export default function ImageUploadScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  content: { flex: 1, padding: 24, alignItems: 'center' },
+  title: { fontSize: 28, fontWeight: '800', color: theme.colors.text, textAlign: 'center', marginBottom: 12 },
+  subtitle: { fontSize: 15, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 40 },
+
+  imageWrap: {
+    width: 240, height: 240, borderRadius: 120, backgroundColor: theme.colors.surface, 
+    justifyContent: 'center', alignItems: 'center', marginBottom: 40, ...theme.shadow.card,
+    borderWidth: 4, borderColor: theme.colors.surface, overflow: 'hidden'
   },
-  content: {
-    flex: 1,
-    padding: theme.spacing.xl,
-    alignItems: 'center',
-  },
-  title: {
-    ...theme.typography.h2,
-    marginBottom: theme.spacing.s,
-    width: '100%',
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...theme.typography.body,
-    marginBottom: theme.spacing.xxl,
-    textAlign: 'center',
-  },
-  imageContainer: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: theme.colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xl,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: theme.colors.border,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholder: {
-    opacity: 0.5,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: theme.spacing.m,
-  },
-  iconButton: {
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.medium,
-    alignItems: 'center',
-    flex: 1,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  iconText: {
-    color: theme.colors.textLight,
-    marginTop: theme.spacing.xs,
-    fontWeight: '600',
-  },
-  processing: {
-    alignItems: 'center',
-    marginTop: theme.spacing.m,
-  },
-  processingText: {
-    color: theme.colors.primary,
-    marginTop: theme.spacing.m,
-    fontSize: 16,
-  },
-  footer: {
-    padding: theme.spacing.xl,
-  },
-  button: {
-    backgroundColor: theme.colors.primary,
-    height: 55,
-    borderRadius: theme.borderRadius.medium,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: theme.colors.surface,
-  },
-  buttonText: {
-    color: theme.colors.background,
-    fontSize: 18,
-    fontWeight: 'bold',
-  }
+  image: { width: '100%', height: '100%' },
+  placeholder: { alignItems: 'center' },
+  placeholderText: { fontSize: 14, color: theme.colors.textMuted, marginTop: 12, fontWeight: '500' },
+
+  btnRow: { flexDirection: 'row', gap: 16, width: '100%' },
+  optionBtn: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: 20, padding: 16, alignItems: 'center', ...theme.shadow.soft },
+  iconWrap: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  optionText: { fontSize: 14, fontWeight: '700', color: theme.colors.text },
+
+  processing: { alignItems: 'center', marginTop: 20 },
+  processingText: { color: theme.colors.primary, marginTop: 16, fontSize: 16, fontWeight: '600' },
+
+  footer: { padding: 24, paddingBottom: 40 },
+  mainBtn: { backgroundColor: theme.colors.accent, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', ...theme.shadow.card },
+  mainBtnOff: { backgroundColor: theme.colors.border, shadowOpacity: 0 },
+  mainBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' }
 });

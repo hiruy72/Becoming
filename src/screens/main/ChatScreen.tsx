@@ -1,86 +1,87 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
-import { useStore } from '../../store/useStore';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, Image } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useStore, DAYS_OF_WEEK } from '../../store/useStore';
 import { theme } from '../../theme/theme';
-import { Send } from 'lucide-react-native';
+import { Send, User as UserIcon, Brain } from 'lucide-react-native';
 
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'future-self';
+  timestamp: number;
 }
 
 export default function ChatScreen() {
-  const { user } = useStore();
+  const insets = useSafeAreaInsets();
+  const { user, weeklyPlan, chatHistory, addChatMessage } = useStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    // Initial welcome message from Future Self
-    setMessages([
-      {
+    if (chatHistory.length > 0) {
+      setMessages(chatHistory);
+    } else {
+      const welcomeMsg: Message = {
         id: '1',
-        text: `Hey past me. I've been waiting for you. I know exactly what you're trying to achieve by becoming a ${user?.chosenIdentity || 'better person'}. Let's get to work. What's on your mind today?`,
+        text: `Hey ${user?.name || 'there'}. I'm the version of you that made it — a ${user?.chosenIdentity || 'champion'}.\n\nI know your goals and weaknesses. Talk to me whenever you need direction.`,
         sender: 'future-self',
-      }
-    ]);
+        timestamp: Date.now(),
+      };
+      setMessages([welcomeMsg]);
+      addChatMessage(welcomeMsg);
+    }
   }, []);
+
+  const getWeeklyPlanContext = () => {
+    const planSummary = DAYS_OF_WEEK.map(day => {
+      const tasks = weeklyPlan[day] || [];
+      if (tasks.length === 0) return null;
+      const completed = tasks.filter(t => t.completed).length;
+      const taskList = tasks.map(t => `  ${t.completed ? '✓' : '✗'} ${t.text}`).join('\n');
+      return `${day} (${completed}/${tasks.length}):\n${taskList}`;
+    }).filter(Boolean).join('\n');
+    return planSummary || 'No weekly plan set yet.';
+  };
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
-
-    const newUserMsg: Message = { id: Date.now().toString(), text: inputText, sender: 'user' };
-    setMessages((prev) => [...prev, newUserMsg]);
+    const newUserMsg: Message = { id: Date.now().toString(), text: inputText, sender: 'user', timestamp: Date.now() };
+    setMessages(prev => [...prev, newUserMsg]);
+    addChatMessage(newUserMsg);
     setInputText('');
     setIsLoading(true);
 
     try {
-      // Step 6: Call OpenAI API using fetch
-      const prompt = `
-        You are the future version of this user: ${user?.name || 'User'}. 
-        You are 10 years older, highly successful, and have fully achieved their chosen identity: ${user?.chosenIdentity}.
-        User goals: ${user?.goals?.join(', ')}. Habits/Weaknesses: ${user?.habits?.join(', ')}.
-        Speak with profound clarity, experience, wisdom, and honesty. You guide them, correct them when needed with tough love, motivate them, and provide realistic advice. Keep responses concise as text messages.
-      `;
+      const systemPrompt = `You are the future version of ${user?.name || 'this person'}. 10 years older, successful, achieved "${user?.chosenIdentity || 'best self'}".
+User goals: ${user?.goals?.join(', ') || 'Not set'}. Weaknesses: ${user?.habits?.join(', ') || 'Not set'}.
+Weekly plan:\n${getWeeklyPlanContext()}
+Be direct, honest, tough love. Reference their actual data. Keep responses concise (2-4 sentences).`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}` },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: prompt },
-            // Feed a few past messages for context
-            ...messages.slice(-5).map(m => ({
-              role: m.sender === 'user' ? 'user' : 'assistant',
-              content: m.text
-            })),
-            { role: 'user', content: newUserMsg.text }
+            { role: 'system', content: systemPrompt },
+            ...messages.slice(-10).map(m => ({ role: m.sender === 'user' ? 'user' as const : 'assistant' as const, content: m.text })),
+            { role: 'user' as const, content: newUserMsg.text }
           ],
-          max_tokens: 150,
+          max_tokens: 200,
         })
       });
-
       const data = await response.json();
-      const replyBody = data.choices?.[0]?.message?.content?.trim() || "Let's keep pushing forward.";
-
-      setMessages((prev) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        text: replyBody,
-        sender: 'future-self'
-      }]);
-    } catch (error) {
-      console.error(error);
-      setMessages((prev) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        text: "I'm having trouble connecting right now, but stay focused.",
-        sender: 'future-self'
-      }]);
+      const replyText = data.choices?.[0]?.message?.content?.trim() || "Stay focused.";
+      const replyMsg: Message = { id: (Date.now() + 1).toString(), text: replyText, sender: 'future-self', timestamp: Date.now() };
+      setMessages(prev => [...prev, replyMsg]);
+      addChatMessage(replyMsg);
+    } catch {
+      const errMsg: Message = { id: (Date.now() + 1).toString(), text: "Connection issue. Stay disciplined regardless.", sender: 'future-self', timestamp: Date.now() };
+      setMessages(prev => [...prev, errMsg]);
+      addChatMessage(errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -89,52 +90,63 @@ export default function ChatScreen() {
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
     return (
-      <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.futureBubble]}>
-        <Text style={[styles.messageText, isUser ? styles.userMessageText : styles.futureMessageText]}>
-          {item.text}
-        </Text>
+      <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
+        {!isUser && (
+          <View style={styles.botAvatarWrap}>
+            <UserIcon color={theme.colors.primary} size={18} />
+          </View>
+        )}
+        <View style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}>
+          <Text style={[styles.bubbleText, isUser && styles.userBubbleText]}>{item.text}</Text>
+        </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Future You</Text>
-        <Text style={styles.headerSubtitle}>Online</Text>
-      </View>
-
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMessage}
-        contentContainerStyle={styles.chatList}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
-
-      {isLoading && (
-        <View style={styles.typingIndicator}>
-          <Text style={styles.typingText}>Future You is typing...</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerAvatarWrap}>
+            <UserIcon color={theme.colors.primary} size={22} />
+          </View>
+          <View>
+            <Text style={styles.headerName}>Future {user?.name || 'You'}</Text>
+            <Text style={styles.headerSub}>{isLoading ? 'typing...' : 'Online'}</Text>
+          </View>
         </View>
-      )}
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.inputContainer}>
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={item => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={styles.chatList}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          showsVerticalScrollIndicator={false}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        />
+
+        <View style={styles.inputBar}>
           <TextInput
             style={styles.input}
-            placeholder="Ask your future self..."
-            placeholderTextColor={theme.colors.text}
+            placeholder="Message..."
+            placeholderTextColor={theme.colors.textMuted}
             value={inputText}
             onChangeText={setInputText}
             multiline
+            maxLength={500}
           />
-          <TouchableOpacity 
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]} 
+          <TouchableOpacity
+            style={[styles.sendBtn, (!inputText.trim() || isLoading) && styles.sendBtnOff]}
             onPress={sendMessage}
-            disabled={!inputText.trim()}
+            disabled={!inputText.trim() || isLoading}
           >
-            <Send color={theme.colors.background} size={20} />
+            <Send color="#fff" size={18} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -143,91 +155,48 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+
   header: {
-    padding: theme.spacing.m,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 20, paddingVertical: 14,
+    backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
   },
-  headerTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.primary,
+  headerAvatarWrap: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.surfaceDark,
+    justifyContent: 'center', alignItems: 'center', overflow: 'hidden'
   },
-  headerSubtitle: {
-    ...theme.typography.caption,
+  headerName: { fontSize: 16, fontWeight: '700', color: theme.colors.text },
+  headerSub: { fontSize: 12, color: theme.colors.success, marginTop: 1 },
+
+  chatList: { padding: 16, paddingBottom: 8 },
+
+  bubbleRow: { flexDirection: 'row', marginBottom: 12, alignItems: 'flex-end', gap: 8 },
+  bubbleRowUser: { justifyContent: 'flex-end' },
+  botAvatarWrap: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.surfaceDark,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 2, overflow: 'hidden'
   },
-  chatList: {
-    padding: theme.spacing.m,
-  },
-  messageBubble: {
-    maxWidth: '80%',
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.medium,
-    marginBottom: theme.spacing.m,
-  },
-  userBubble: {
-    alignSelf: 'flex-end',
-    backgroundColor: theme.colors.primary,
-    borderBottomRightRadius: 0,
-  },
-  futureBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: theme.colors.surface,
-    borderBottomLeftRadius: 0,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  messageText: {
-    ...theme.typography.body,
-  },
-  userMessageText: {
-    color: theme.colors.background,
-  },
-  futureMessageText: {
-    color: theme.colors.textLight,
-  },
-  typingIndicator: {
-    paddingHorizontal: theme.spacing.l,
-    paddingBottom: theme.spacing.s,
-  },
-  typingText: {
-    ...theme.typography.caption,
-    fontStyle: 'italic',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: theme.spacing.m,
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    alignItems: 'flex-end',
+
+  bubble: { maxWidth: '78%', padding: 14, borderRadius: 18 },
+  userBubble: { backgroundColor: theme.colors.surfaceDark, borderBottomRightRadius: 6 },
+  botBubble: { backgroundColor: theme.colors.surface, borderBottomLeftRadius: 6, ...theme.shadow.soft },
+  bubbleText: { fontSize: 15, lineHeight: 22, color: theme.colors.text },
+  userBubbleText: { color: '#fff' },
+
+  inputBar: {
+    flexDirection: 'row', padding: 12, gap: 10, alignItems: 'flex-end',
+    backgroundColor: theme.colors.surface, borderTopWidth: 1, borderTopColor: theme.colors.border,
+    paddingBottom: Platform.OS === 'ios' ? 12 : 24,
   },
   input: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.textLight,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.large,
-    maxHeight: 100,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    flex: 1, backgroundColor: theme.colors.background, borderRadius: 22,
+    paddingHorizontal: 18, paddingVertical: 12, maxHeight: 100,
+    fontSize: 15, color: theme.colors.text, borderWidth: 1, borderColor: theme.colors.border,
   },
-  sendButton: {
-    backgroundColor: theme.colors.primary,
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: theme.spacing.m,
-    marginBottom: 2,
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accent,
+    justifyContent: 'center', alignItems: 'center',
   },
-  sendButtonDisabled: {
-    backgroundColor: theme.colors.text,
-  }
+  sendBtnOff: { backgroundColor: theme.colors.border },
 });
