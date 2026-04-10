@@ -31,7 +31,7 @@ export default function IdentitySetupScreen({ navigation }: any) {
         
         <View style={styles.headerImageContainer}>
            <Image 
-             source={require('../../../assets/onboarding2.png')} 
+             source={{ uri: 'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=1000' }} 
              style={styles.headerImage}
            />
            <View style={styles.headerOverlay} />

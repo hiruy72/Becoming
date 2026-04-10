@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Image } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Animated } from 'react-native';
 import { theme } from '../../theme/theme';
 import { useStore } from '../../store/useStore';
 
@@ -7,28 +7,51 @@ const SLIDES = [
   {
     title: 'Meet Your Future',
     description: 'Talk directly to an older, highly successful version of yourself.',
-    image: require('../../../assets/onboarding1.png')
+    image: { uri: 'https://images.unsplash.com/photo-1522204523234-8729aa6e3d5f?q=80&w=1000' }
   },
   {
     title: 'Architect Your Path',
     description: 'Every great building starts with a blueprint. Formulate weekly actionable habits.',
-    image: require('../../../assets/onboarding2.png')
+    image: { uri: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=1000' }
   },
   {
     title: 'Stay Accountable',
-    description: 'Your future self will brutally honesty analyze your progress and tell you what went wrong.',
-    image: require('../../../assets/onboarding3.png')
+    description: 'Your future self will brutally honestly analyze your progress and tell you what went wrong.',
+    image: { uri: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1000' }
   },
   {
     title: 'Gamify Your Life',
     description: 'Level up your discipline, earn XP, and become the person you were meant to be.',
-    image: require('../../../assets/onboarding1.png') 
+    image: { uri: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1000' } 
   }
 ];
 
 export default function IntroScreen({ navigation }: any) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const { setHasSeenIntro } = useStore();
+  
+  // Animation Values
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Trigger animation when index changes
+  useEffect(() => {
+    fadeAnim.setValue(0);
+    scaleAnim.setValue(0.95);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, [currentIndex]);
 
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
@@ -50,9 +73,9 @@ export default function IntroScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
+      <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.imageContainer}>
-          <Image 
+          <Animated.Image 
             source={SLIDES[currentIndex].image} 
             style={styles.heroImage}
             resizeMode="cover"
@@ -73,7 +96,7 @@ export default function IntroScreen({ navigation }: any) {
             />
           ))}
         </View>
-      </View>
+      </Animated.View>
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.button} onPress={handleNext}>
