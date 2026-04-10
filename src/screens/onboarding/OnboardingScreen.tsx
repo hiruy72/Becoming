@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Image } from 'react-native';
 import { theme } from '../../theme/theme';
 
 const SLIDES = [
   {
     title: 'Meet Your Future',
     description: 'Talk directly to an older, highly successful version of yourself.',
+    image: require('../../../assets/onboarding1.png')
   },
   {
     title: 'Achieve Everything',
     description: 'Get deep, personalized advice based on your current habits and goals.',
+    image: require('../../../assets/onboarding2.png')
   },
   {
     title: 'Gamify Your Life',
     description: 'Level up, earn XP, and become the person you were meant to be.',
+    image: require('../../../assets/onboarding3.png')
   }
 ];
 
@@ -37,8 +40,12 @@ export default function OnboardingScreen({ navigation }: any) {
       </View>
 
       <View style={styles.content}>
-        <View style={styles.placeholderImage}>
-          <Text style={{color: theme.colors.primary}}>Illustration / Image Here</Text>
+        <View style={styles.imageContainer}>
+          <Image 
+            source={SLIDES[currentIndex].image} 
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
         </View>
 
         <Text style={styles.title}>{SLIDES[currentIndex].title}</Text>
@@ -87,14 +94,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.xl,
   },
-  placeholderImage: {
-    width: 250,
-    height: 250,
-    backgroundColor: theme.colors.surface,
+  imageContainer: {
+    width: 280,
+    height: 380,
     borderRadius: theme.borderRadius.large,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xxl,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.xl,
+    elevation: 10,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     ...theme.typography.h2,
@@ -118,7 +134,7 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     backgroundColor: theme.colors.primary,
-    width: 20,
+    width: 25,
   },
   footer: {
     padding: theme.spacing.xl,
@@ -129,6 +145,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.medium,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
   buttonText: {
     color: theme.colors.background,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Image } from 'react-native';
 import { useStore } from '../../store/useStore';
 import { theme } from '../../theme/theme';
 
@@ -28,62 +28,74 @@ export default function IdentitySetupScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>Who do you want to become?</Text>
-        <Text style={styles.subtitle}>Define your ultimate future self.</Text>
-
-        <View style={styles.presets}>
-          {PRESETS.map((preset, idx) => (
-            <TouchableOpacity 
-              key={idx} 
-              style={[
-                styles.presetChip,
-                identity === preset && styles.presetChipActive
-              ]}
-              onPress={() => setIdentity(preset)}
-            >
-              <Text style={[
-                styles.presetChipText,
-                identity === preset && styles.presetChipTextActive
-              ]}>{preset}</Text>
-            </TouchableOpacity>
-          ))}
+        
+        <View style={styles.headerImageContainer}>
+           <Image 
+             source={require('../../../assets/onboarding2.png')} 
+             style={styles.headerImage}
+           />
+           <View style={styles.headerOverlay} />
+           <View style={styles.headerTextWrapper}>
+             <Text style={styles.title}>Who do you want to become?</Text>
+             <Text style={styles.subtitle}>Define your ultimate future self.</Text>
+           </View>
         </View>
 
-        <TextInput 
-          style={styles.input}
-          placeholder="Or type a custom identity..."
-          placeholderTextColor={theme.colors.text}
-          value={identity}
-          onChangeText={setIdentity}
-        />
+        <View style={styles.formContent}>
+          <View style={styles.presets}>
+            {PRESETS.map((preset, idx) => (
+              <TouchableOpacity 
+                key={idx} 
+                style={[
+                  styles.presetChip,
+                  identity === preset && styles.presetChipActive
+                ]}
+                onPress={() => setIdentity(preset)}
+              >
+                <Text style={[
+                  styles.presetChipText,
+                  identity === preset && styles.presetChipTextActive
+                ]}>{preset}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        <Text style={styles.label}>What are your main goals? (comma separated)</Text>
-        <TextInput 
-          style={styles.textArea}
-          placeholder="e.g. Build a startup, Run a marathon"
-          placeholderTextColor={theme.colors.text}
-          multiline
-          value={goals}
-          onChangeText={setGoals}
-        />
+          <TextInput 
+            style={styles.input}
+            placeholder="Or type a custom identity..."
+            placeholderTextColor={theme.colors.text}
+            value={identity}
+            onChangeText={setIdentity}
+          />
 
-        <Text style={styles.label}>What are your current habits/weaknesses?</Text>
-        <TextInput 
-          style={styles.textArea}
-          placeholder="e.g. Doomscrolling, Procrastination"
-          placeholderTextColor={theme.colors.text}
-          multiline
-          value={habits}
-          onChangeText={setHabits}
-        />
+          <Text style={styles.label}>What are your main goals? (comma separated)</Text>
+          <TextInput 
+            style={styles.textArea}
+            placeholder="e.g. Build a startup, Run a marathon"
+            placeholderTextColor={theme.colors.text}
+            multiline
+            value={goals}
+            onChangeText={setGoals}
+          />
 
-        <TouchableOpacity 
-          style={[styles.button, !identity && styles.buttonDisabled]} 
-          onPress={handleNext}
-          disabled={!identity}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+          <Text style={styles.label}>What are your current habits/weaknesses?</Text>
+          <TextInput 
+            style={styles.textArea}
+            placeholder="e.g. Doomscrolling, Procrastination"
+            placeholderTextColor={theme.colors.text}
+            multiline
+            value={habits}
+            onChangeText={setHabits}
+          />
+
+          <TouchableOpacity 
+            style={[styles.button, !identity && styles.buttonDisabled]} 
+            onPress={handleNext}
+            disabled={!identity}
+          >
+            <Text style={styles.buttonText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -95,15 +107,41 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   scroll: {
-    padding: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl,
+  },
+  headerImageContainer: {
+    width: '100%',
+    height: 250,
+    position: 'relative',
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  headerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(11, 12, 16, 0.6)',
+  },
+  headerTextWrapper: {
+    position: 'absolute',
+    bottom: theme.spacing.l,
+    left: theme.spacing.xl,
+    right: theme.spacing.xl,
   },
   title: {
     ...theme.typography.h2,
-    marginBottom: theme.spacing.s,
+    marginBottom: theme.spacing.xs,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 5,
   },
   subtitle: {
     ...theme.typography.body,
-    marginBottom: theme.spacing.xl,
+    color: '#E0E0E0',
+  },
+  formContent: {
+    padding: theme.spacing.xl,
   },
   presets: {
     flexDirection: 'row',
@@ -138,7 +176,7 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    height: 50,
+    height: 55,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.medium,
     paddingHorizontal: theme.spacing.m,
@@ -165,9 +203,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: theme.spacing.xxl,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
   buttonDisabled: {
     backgroundColor: theme.colors.surface,
+    shadowOpacity: 0,
   },
   buttonText: {
     color: theme.colors.background,
